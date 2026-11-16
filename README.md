@@ -75,11 +75,37 @@ gost -L "udp://127.0.0.1:5353/8.8.8.8:53" \
 
 ## 安装
 
+一条命令：
+
 ```sh
-sh socks.sh
+curl -fsSL -o /usr/local/bin/socks5 \
+  https://github.com/w243420707/socks5-oneclick/releases/download/install/socks.sh \
+  && chmod +x /usr/local/bin/socks5 && socks5
 ```
 
-会提示输入监听端口（默认 1080，重装时沿用上次的），然后自动：
+脚本会留在 `/usr/local/bin/socks5`，之后直接 `socks5 --status` 看状态，不用再下载。
+
+跑起来会提示输入监听端口（默认 1080，重装时沿用上次的），然后自动：
+
+> **不要用 `curl ... | sh`。** 管道会把标准输入占掉，端口提示读不到你的输入，只能走默认值。
+
+国内访问慢的话用 CDN 镜像：
+
+```sh
+curl -fsSL -o /usr/local/bin/socks5 \
+  https://cdn.jsdelivr.net/gh/w243420707/socks5-oneclick@main/socks.sh \
+  && chmod +x /usr/local/bin/socks5 && socks5
+```
+
+不想交互，直接指定端口：
+
+```sh
+PORT=1080 socks5
+```
+
+也可以自己下载脚本再跑（`sh socks.sh`），效果一样。
+
+装完自动做的事：
 
 1. 识别架构，下载对应版本的 gost 并校验 sha256
 2. 生成账号密码（重装时沿用已有凭据）
@@ -94,22 +120,24 @@ sh socks.sh
 
 > 本仓库需保持**公开**。私有状态下 Release 资源匿名下载会返回 404，自托管这条会失效，脚本只能回退上游。
 
-想用镜像：`GOST_URL=<前缀> sh socks.sh`，前缀需能拼出 `<前缀>/gost_3.3.3_linux_<架构>.tar.gz` 和 `<前缀>/checksums.txt`。
+想用镜像：`GOST_URL=<前缀> socks5`，前缀需能拼出 `<前缀>/gost_3.3.3_linux_<架构>.tar.gz` 和 `<前缀>/checksums.txt`。
 
 ## 用法
 
+下面假设脚本已装到 `/usr/local/bin/socks5`。直接下载运行的，把 `socks5` 换成 `sh socks.sh`。
+
 | 命令 | 作用 |
 |---|---|
-| `sh socks.sh` | 安装或重装，**保留**已有账号密码和端口 |
-| `sh socks.sh --rotate` | 安装并重置账号密码 |
-| `sh socks.sh --status` | 查看服务状态、TCP/UDP、连接数、内存占用 |
-| `sh socks.sh --help` | 帮助 |
+| `socks5` | 安装或重装，**保留**已有账号密码和端口 |
+| `socks5 --rotate` | 安装并重置账号密码 |
+| `socks5 --status` | 查看服务状态、TCP/UDP、连接数、内存占用 |
+| `socks5 --help` | 帮助 |
 
 ### 环境变量
 
 | 变量 | 说明 |
 |---|---|
-| `PORT` | 跳过交互，直接用指定端口。例：`PORT=1080 sh socks.sh` |
+| `PORT` | 跳过交互，直接用指定端口。例：`PORT=1080 socks5` |
 | `GOST_ARCH` | 强制指定架构，如 `amd64v3`、`arm64` |
 | `GOST_URL` | 镜像下载前缀 |
 
@@ -139,7 +167,7 @@ sh socks.sh
 ## 常用排查
 
 ```sh
-sh socks.sh --status                  # 一眼看状态
+socks5 --status                       # 一眼看状态
 journalctl -u gost -n 50              # Debian / Ubuntu 看日志
 tail -n 50 /var/log/messages          # Alpine 看日志
 ss -lntup | grep <端口>                # 确认 TCP 监听
@@ -157,7 +185,17 @@ ss -lntup | grep <端口>                # 确认 TCP 监听
 
 ## 版本与更新日志
 
-当前版本：**2.2.0**
+当前版本：**2.2.1**
+
+### 2.2.1
+
+**新增**
+- 一键安装命令，脚本从 Release 的 `install` 标签下载（走 github.com 域名，不受 `raw.githubusercontent.com` 被墙影响），并落到 `/usr/local/bin/socks5`
+- jsDelivr CDN 镜像命令，国内环境更快
+- 明确提示不要用 `curl ... | sh`：管道会占掉标准输入，端口提示读不到
+
+**改进**
+- 脚本装成 `socks5` 后，帮助与结尾提示直接显示 `socks5 --status`，不再甩完整路径
 
 ### 2.2.0
 

@@ -14,7 +14,7 @@
 
 set -e
 
-SCRIPT_VERSION="2.2.0"
+SCRIPT_VERSION="2.2.1"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
 SELF_REPO="w243420707/socks5-oneclick"
@@ -33,6 +33,12 @@ GOMEMLIMIT="64MiB"
 UDP_BUFSIZE="8192"
 OLD_ENV_FILE="/etc/socks5-proxy.env"
 
+# 装成 socks5 之后，提示里就直接写 socks5 --status，不再甩一长串路径
+case "$0" in
+  */socks5) SELF_CMD="socks5" ;;
+  *)        SELF_CMD="sh $0" ;;
+esac
+
 log()  { printf '[INFO] %s\n' "$*"; }
 warn() { printf '[WARN] %s\n' "$*" >&2; }
 err()  { printf '[ERR ] %s\n' "$*" >&2; }
@@ -42,10 +48,10 @@ usage() {
   cat <<EOF
 SOCKS5 一键安装（gost v${GOST_VERSION} · 单端口 TCP+UDP）  v${SCRIPT_VERSION}
 
-  sh $0              安装或重装，保留已有账号密码
-  sh $0 --rotate     安装并重置账号密码
-  sh $0 --status     查看服务状态、监听端口与内存占用
-  sh $0 --help       显示本帮助
+  ${SELF_CMD}              安装或重装，保留已有账号密码
+  ${SELF_CMD} --rotate     安装并重置账号密码
+  ${SELF_CMD} --status     查看服务状态、监听端口与内存占用
+  ${SELF_CMD} --help       显示本帮助
 
 环境变量：
   PORT=<端口>        跳过交互提示，直接使用指定端口
@@ -710,7 +716,7 @@ print_result() {
   echo "         -F \"socks5://${PROXY_USER}:${PROXY_PASS}@${ip}:${PORT}\""
   echo "  然后把应用里的 DNS 指向 127.0.0.1:5353（目标地址按需替换）。"
   echo
-  echo "查看状态：sh $0 --status"
+  echo "查看状态：${SELF_CMD} --status"
 }
 
 # ========================= 主流程 =========================
