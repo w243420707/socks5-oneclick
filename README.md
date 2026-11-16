@@ -75,12 +75,10 @@ gost -L "udp://127.0.0.1:5353/8.8.8.8:53" \
 
 ## 安装
 
-一条命令：
+一条命令，整行复制：
 
 ```sh
-curl -fsSL -o /usr/local/bin/socks5 \
-  https://github.com/w243420707/socks5-oneclick/releases/download/install/socks.sh \
-  && chmod +x /usr/local/bin/socks5 && socks5
+curl -fsSL -o /usr/local/bin/socks5 https://github.com/w243420707/socks5-oneclick/releases/download/install/socks.sh && chmod +x /usr/local/bin/socks5 && socks5
 ```
 
 脚本会留在 `/usr/local/bin/socks5`，之后直接 `socks5 --status` 看状态，不用再下载。
@@ -92,9 +90,7 @@ curl -fsSL -o /usr/local/bin/socks5 \
 国内访问慢的话用 CDN 镜像：
 
 ```sh
-curl -fsSL -o /usr/local/bin/socks5 \
-  https://cdn.jsdelivr.net/gh/w243420707/socks5-oneclick@main/socks.sh \
-  && chmod +x /usr/local/bin/socks5 && socks5
+curl -fsSL -o /usr/local/bin/socks5 https://cdn.jsdelivr.net/gh/w243420707/socks5-oneclick@main/socks.sh && chmod +x /usr/local/bin/socks5 && socks5
 ```
 
 不想交互，直接指定端口：
@@ -242,7 +238,16 @@ ss -lntup | grep <端口>                # 确认 TCP 监听
 
 ## 版本与更新日志
 
-当前版本：**2.2.4**
+当前版本：**2.2.5**
+
+### 2.2.5
+
+**修复**
+- 通过 PATH 直接执行 `socks5` 时，`$0` 是不带路径的裸命令名，原先只匹配 `*/socks5` 会落空，导致提示显示成 `sh socks5 --status`
+
+**文档**
+- 一键安装命令改为单行，整行复制即可，不用再处理续行符
+- 验收清单同步改用单行命令与 `socks5 --status`
 
 ### 2.2.4
 

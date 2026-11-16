@@ -14,7 +14,7 @@
 
 set -e
 
-SCRIPT_VERSION="2.2.4"
+SCRIPT_VERSION="2.2.5"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
 SELF_REPO="w243420707/socks5-oneclick"
@@ -35,8 +35,8 @@ OLD_ENV_FILE="/etc/socks5-proxy.env"
 
 # 装成 socks5 之后，提示里就直接写 socks5 --status，不再甩一长串路径
 case "$0" in
-  */socks5) SELF_CMD="socks5" ;;
-  *)        SELF_CMD="sh $0" ;;
+  socks5|*/socks5) SELF_CMD="socks5" ;;
+  *)               SELF_CMD="sh $0" ;;
 esac
 
 log()  { printf '[INFO] %s\n' "$*"; }
