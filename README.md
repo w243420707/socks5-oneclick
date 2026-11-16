@@ -70,6 +70,8 @@ sh socks.sh
 
 优先从**本仓库 Release** `gost-3.3.3` 下载（内含 amd64、arm64 两个架构，sha256 与 gost 官方 `checksums.txt` 一致）。本仓库没有对应架构时，自动回退到上游 `go-gost/gost` 的 Release。
 
+> 本仓库需保持**公开**。私有状态下 Release 资源匿名下载会返回 404，自托管这条会失效，脚本只能回退上游。
+
 想用镜像：`GOST_URL=<前缀> sh socks.sh`，前缀需能拼出 `<前缀>/gost_3.3.3_linux_<架构>.tar.gz` 和 `<前缀>/checksums.txt`。
 
 ## 用法
