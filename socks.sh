@@ -14,7 +14,7 @@
 
 set -e
 
-SCRIPT_VERSION="2.2.2"
+SCRIPT_VERSION="2.2.3"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
 SELF_REPO="w243420707/socks5-oneclick"
@@ -680,8 +680,9 @@ show_status() {
   printf ' 配置文件  : %s\n' "$CONF_FILE"
   printf ' 用户名    : %s\n' "$PROXY_USER"
   printf ' 密码      : %s\n' "$PROXY_PASS"
-  printf ' 一键链接  : socks5://%s:%s@%s:%s\n' "$PROXY_USER" "$PROXY_PASS" "$(get_public_ip)" "$PORT"
   echo "=================================================="
+  echo
+  printf 'socks5://%s:%s@%s:%s\n' "$PROXY_USER" "$PROXY_PASS" "$(get_public_ip)" "$PORT"
   echo
 }
 
@@ -699,8 +700,12 @@ print_result() {
   echo "  端口     : $PORT"
   echo "  用户名   : $PROXY_USER"
   echo "  密码     : $PROXY_PASS"
+  echo "=================================================="
   echo
-  echo "  一键链接 : socks5://${PROXY_USER}:${PROXY_PASS}@${ip}:${PORT}"
+  echo "一键链接（整行复制）："
+  echo
+  echo "socks5://${PROXY_USER}:${PROXY_PASS}@${ip}:${PORT}"
+  echo
   echo "=================================================="
   echo "账号密码保存在 ${ENV_FILE}（权限 600，仅 root 可读）。"
   echo "重跑本脚本会沿用这套凭据；要换密码请用 --rotate。"
