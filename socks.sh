@@ -14,9 +14,11 @@
 
 set -e
 
-SCRIPT_VERSION="2.0.0"
+SCRIPT_VERSION="2.1.0"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
+SELF_REPO="w243420707/socks5-oneclick"
+GOST_TAG="gost-${GOST_VERSION}"
 
 CONF_DIR="/etc/gost"
 ENV_FILE="${CONF_DIR}/gost.env"
@@ -51,7 +53,11 @@ SOCKS5 一键安装（gost v${GOST_VERSION} · 单端口 TCP+UDP）  v${SCRIPT_V
   GOST_URL=<前缀>    使用镜像下载，前缀需能拼出
                      <前缀>/gost_${GOST_VERSION}_linux_<架构>.tar.gz
 
-装好后记得在云厂商安全组放行该端口的 TCP 与 UDP。
+二进制默认从本仓库 Release 下载，缺失时回退上游 GitHub。
+
+安全组放行该端口的 TCP 即可。若入场只映射一个端口（NAT 小鸡），
+标准 SOCKS5 的 UDP 无法使用，需在客户端用 gost 做 TCP 隧道，
+详见安装完成后的提示。
 EOF
 }
 
@@ -236,6 +242,25 @@ gost_version_now() {
     | head -n1
 }
 
+# 从指定源下载并校验，成功返回 0
+# $1 = 下载前缀，$2 = 校验文件名（自家 release 用 SHA256SUMS，上游用 checksums.txt）
+# 返回 1 = 下载失败（可降级）；返回 2 = 校验失败（不可降级，必须中止）
+download_from() {
+  b="$1"
+  c="$2"
+  curl -fsSL --retry 2 --connect-timeout 15 -o "${tmp}/${tarball}" "${b}/${tarball}" || return 1
+  if curl -fsSL --retry 2 --connect-timeout 10 -o "${tmp}/${c}" "${b}/${c}" 2>/dev/null; then
+    if ( cd "$tmp" && grep -F "$tarball" "$c" > sel.txt 2>/dev/null && sha256sum -c sel.txt >/dev/null 2>&1 ); then
+      log "sha256 校验通过（来源 ${b}）。"
+      return 0
+    fi
+    err "sha256 校验失败（来源 ${b}），文件可能损坏或被篡改。"
+    return 2
+  fi
+  warn "未取到校验文件，跳过校验（来源 ${b}）。"
+  return 0
+}
+
 download_gost() {
   cur="$(gost_version_now)"
   if [ "$cur" = "$GOST_VERSION" ]; then
@@ -244,32 +269,35 @@ download_gost() {
   fi
 
   tarball="gost_${GOST_VERSION}_linux_${ARCH}.tar.gz"
-  if [ -n "${GOST_URL:-}" ]; then
-    base="${GOST_URL}"
-  else
-    base="https://github.com/${GOST_REPO}/releases/download/v${GOST_VERSION}"
-  fi
-
   tmp="${TMPDIR:-/tmp}/gost-dl.$$"
   mkdir -p "$tmp"
 
-  log "下载 ${tarball} ..."
-  if ! curl -fsSL --retry 3 --connect-timeout 15 -o "${tmp}/${tarball}" "${base}/${tarball}"; then
-    err "下载失败。"
-    err "如果服务器无法访问 GitHub，可用 GOST_URL 指定镜像前缀，或手动把"
-    err "${tarball} 放到 ${tmp} 后重跑。"
-    return 1
+  ok=0
+  if [ -n "${GOST_URL:-}" ]; then
+    log "从指定源下载 ${tarball} ..."
+    if download_from "${GOST_URL}" "checksums.txt"; then ok=1; fi
+  else
+    log "从本仓库 Release 下载 ${tarball} ..."
+    r=0
+    download_from "https://github.com/${SELF_REPO}/releases/download/${GOST_TAG}" "SHA256SUMS" || r=$?
+    if [ "$r" -eq 0 ]; then
+      ok=1
+    elif [ "$r" -eq 2 ]; then
+      err "自托管包校验失败，已中止安装。"
+      rm -rf "$tmp"
+      return 1
+    else
+      warn "本仓库 Release 没有该架构的包，回退到上游 GitHub ..."
+      if download_from "https://github.com/${GOST_REPO}/releases/download/v${GOST_VERSION}" "checksums.txt"; then
+        ok=1
+      fi
+    fi
   fi
 
-  if curl -fsSL --retry 2 --connect-timeout 10 -o "${tmp}/checksums.txt" "${base}/checksums.txt" 2>/dev/null; then
-    if ( cd "$tmp" && grep -F "$tarball" checksums.txt > sel.txt 2>/dev/null && sha256sum -c sel.txt >/dev/null 2>&1 ); then
-      log "sha256 校验通过。"
-    else
-      err "sha256 校验失败，文件可能损坏或被篡改，已中止安装。"
-      return 1
-    fi
-  else
-    warn "未取到官方 checksums.txt，跳过校验（仅依靠 HTTPS 传输）。"
+  if [ "$ok" -ne 1 ]; then
+    err "下载失败。"
+    err "可手动把 ${tarball} 放到 ${tmp} 后重跑，或用 GOST_URL 指定可用的下载前缀。"
+    return 1
   fi
 
   if ! tar -xzf "${tmp}/${tarball}" -C "$tmp"; then
@@ -467,9 +495,9 @@ verify_proxy() {
   log "TCP ${PORT} 已监听。"
 
   if udp_listening; then
-    log "UDP ${PORT} 已监听，SOCKS5 UDP 中继就绪。"
+    log "UDP ${PORT} 固定监听，标准 SOCKS5 UDP 可直接使用。"
   else
-    warn "UDP ${PORT} 未监听 —— UDP 业务会失败，请检查配置里的 udp: true。"
+    log "UDP 中继已启用（标准模式下端口按需分配，不固定占用 ${PORT}）。"
   fi
 
   if ! exists curl; then
@@ -617,8 +645,11 @@ show_status() {
 
   tcp_state="未监听"
   if tcp_listening; then tcp_state="监听中"; fi
-  udp_state="未监听"
-  if udp_listening; then udp_state="监听中"; fi
+  if udp_listening; then
+    udp_state="固定监听 :${PORT}"
+  else
+    udp_state="已启用，端口按需分配"
+  fi
 
   conns="-"
   if exists ss; then
@@ -668,8 +699,16 @@ print_result() {
   echo "账号密码保存在 ${ENV_FILE}（权限 600，仅 root 可读）。"
   echo "重跑本脚本会沿用这套凭据；要换密码请用 --rotate。"
   echo
-  echo "【必做】云厂商安全组放行 TCP ${PORT} 和 UDP ${PORT}。"
-  echo "        只放 TCP 的话，普通网页代理能用，但 UDP 业务会失败。"
+  echo "【安全组】放行 TCP ${PORT} 即可代理上网。"
+  echo
+  echo "【UDP 怎么用】"
+  echo "  标准 SOCKS5 客户端（浏览器、Clash 等）的 UDP 中继，需要服务器能接收一个"
+  echo "  按需分配的高位 UDP 端口。入场只映射一个端口的 NAT 小鸡收不到这些包，"
+  echo "  会静默失败 —— 这是协议决定的，不是软件问题。"
+  echo "  这种环境请在客户端也装 gost，让 UDP 走 TCP 隧道："
+  echo "    gost -L \"udp://127.0.0.1:5353/8.8.8.8:53\" \\"
+  echo "         -F \"socks5://${PROXY_USER}:${PROXY_PASS}@${ip}:${PORT}\""
+  echo "  然后把应用里的 DNS 指向 127.0.0.1:5353（目标地址按需替换）。"
   echo
   echo "查看状态：sh $0 --status"
 }
