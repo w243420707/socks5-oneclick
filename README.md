@@ -24,7 +24,29 @@ gost 官方参数表里也没有任何选项能固定这个端口。
 | 入场只映射一个端口的 NAT 小鸡 | **不能**，包在你上游就被丢了 |
 | NAT 小鸡 + 客户端也跑 gost | 能，UDP 走 TCP 隧道（见下） |
 
-这不是选哪个软件的问题。换 Dante 也一样——它有个 `udp.portrange` 参数指定 UDP 转发端口段，同样不是代理端口。
+这不是选哪个软件的问题。换 Dante 也一样——它有个 `udp.portrange` 参数，手册写的是「指定 socks 客户端与 Dante 服务器之间传输 UDP 包所用的端口段」，同样不是代理端口。
+
+### 诊断：中继端口到底是多少
+
+```sh
+python3 probe-udp.py --port 1080 --user 用户名 --pass 密码
+```
+
+脚本会完整走一遍协商和 UDP ASSOCIATE，直接打印服务器返回的地址和端口，并判断它和代理端口是否相同。对着老方案（Dante）和 gost 各跑一次，就能看出差别在哪。
+
+Alpine 上若没有 python3：`apk add python3`。
+
+### 三种 Go 代理的实测结果
+
+| 代理 | 版本 | UDP ASSOCIATE 返回 |
+|---|---|---|
+| gost | 3.3.3 | 随机高位端口（实测 61277） |
+| sing-box | 1.14.4 | 随机高位端口（实测 51165） |
+| xray | 26.11.9 | 随机高位端口（实测 49675） |
+
+三个都是随机端口，说明这是 Go 系代理的通行做法，不是某个软件的缺陷。
+
+**待确认**：有反馈说老脚本的 Dante 在单端口环境下 UDP 是通的。如果属实，说明 Dante 的中继端口行为和上面三个不同。用 `probe-udp.py` 对着老 Dante 跑一次即可确认。
 
 ### UDP 走 TCP 隧道（NAT 小鸡的解法）
 
@@ -102,6 +124,8 @@ sh socks.sh
 | `/etc/init.d/gost` | OpenRC 服务（Alpine） |
 | `/usr/local/bin/socks5-watchdog.sh` | 每小时自检脚本 |
 
+仓库里另有 `probe-udp.py`，用来诊断 SOCKS5 的 UDP 中继端口，见上文。
+
 ## 从旧版本升级
 
 直接重跑新脚本即可。脚本会：
@@ -133,7 +157,13 @@ ss -lntup | grep <端口>                # 确认 TCP 监听
 
 ## 版本与更新日志
 
-当前版本：**2.1.0**
+当前版本：**2.2.0**
+
+### 2.2.0
+
+**新增**
+- `probe-udp.py`：诊断 SOCKS5 的 UDP 中继端口，完整走一遍协商与 UDP ASSOCIATE，打印服务器返回的地址端口并判断是否与代理端口相同
+- README 补充 gost / sing-box / xray 三者的 UDP 中继端口实测结果
 
 ### 2.1.0
 

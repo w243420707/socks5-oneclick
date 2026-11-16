@@ -14,7 +14,7 @@
 
 set -e
 
-SCRIPT_VERSION="2.1.0"
+SCRIPT_VERSION="2.2.0"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
 SELF_REPO="w243420707/socks5-oneclick"
