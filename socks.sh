@@ -14,7 +14,7 @@
 
 set -e
 
-SCRIPT_VERSION="2.2.3"
+SCRIPT_VERSION="2.2.4"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
 SELF_REPO="w243420707/socks5-oneclick"
@@ -132,21 +132,29 @@ detect_arch() {
 }
 
 install_deps() {
-  if exists curl && exists tar && exists sha256sum; then
-    return 0
-  fi
-  log "安装基础工具（curl, ca-certificates）..."
-  if [ "$OS_FAMILY" = "alpine" ]; then
-    apk update >/dev/null 2>&1 || true
-    apk add --no-cache curl ca-certificates >/dev/null 2>&1 || true
-  else
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update >/dev/null 2>&1 || true
-    apt-get install -y curl ca-certificates >/dev/null 2>&1 || true
+  if ! exists curl || ! exists tar || ! exists sha256sum; then
+    log "安装基础工具（curl, ca-certificates）..."
+    if [ "$OS_FAMILY" = "alpine" ]; then
+      apk update >/dev/null 2>&1 || true
+      apk add --no-cache curl ca-certificates >/dev/null 2>&1 || true
+    else
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update >/dev/null 2>&1 || true
+      apt-get install -y curl ca-certificates >/dev/null 2>&1 || true
+    fi
   fi
   if ! exists curl; then
     err "curl 安装失败，无法继续。"
     exit 1
+  fi
+
+  # 精简 Alpine 默认不带 ss/ip（都在 iproute2 里），补上让排查命令可用；失败不致命
+  if ! exists ss; then
+    if [ "$OS_FAMILY" = "alpine" ]; then
+      apk add --no-cache iproute2 >/dev/null 2>&1 || true
+    else
+      apt-get install -y iproute2 >/dev/null 2>&1 || true
+    fi
   fi
 }
 
@@ -256,7 +264,14 @@ download_from() {
   c="$2"
   curl -fsSL --retry 2 --connect-timeout 15 -o "${tmp}/${tarball}" "${b}/${tarball}" || return 1
   if curl -fsSL --retry 2 --connect-timeout 10 -o "${tmp}/${c}" "${b}/${c}" 2>/dev/null; then
-    if ( cd "$tmp" && grep -F "$tarball" "$c" > sel.txt 2>/dev/null && sha256sum -c sel.txt >/dev/null 2>&1 ); then
+    # 不用 sha256sum -c：busybox 的 applet 对 -c 的支持面不一，手动比对更稳
+    expected="$(awk -v f="$tarball" '$2 == f || $2 == "*" f { print $1; exit }' "${tmp}/${c}" 2>/dev/null)"
+    actual="$(sha256sum "${tmp}/${tarball}" 2>/dev/null | awk '{ print $1; exit }')"
+    if [ -z "$expected" ]; then
+      warn "校验文件里没有 ${tarball} 的条目，跳过校验（来源 ${b}）。"
+      return 0
+    fi
+    if [ "$expected" = "$actual" ]; then
       log "sha256 校验通过（来源 ${b}）。"
       return 0
     fi
@@ -315,7 +330,9 @@ download_gost() {
     return 1
   fi
 
-  install -m 0755 "${tmp}/gost" "$GOST_BIN"
+  # 不用 install(1)：部分 busybox 构建未链接该 applet，cp + chmod 一定有
+  cp -f "${tmp}/gost" "$GOST_BIN"
+  chmod 0755 "$GOST_BIN"
   rm -rf "$tmp"
   log "已安装 ${GOST_BIN}（$("$GOST_BIN" -V 2>/dev/null | head -n1)）"
 }
@@ -363,7 +380,7 @@ EOF
 write_unit_systemd() {
   cat > "/etc/systemd/system/${SERVICE}.service" <<EOF
 [Unit]
-Description=gost SOCKS5 proxy (TCP+UDP)
+Description=gost SOCKS5 proxy
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=60
@@ -391,7 +408,7 @@ EOF
 write_unit_openrc() {
   cat > "/etc/init.d/${SERVICE}" <<EOF
 #!/sbin/openrc-run
-description="gost SOCKS5 proxy (TCP+UDP)"
+description="gost SOCKS5 proxy"
 command="${GOST_BIN}"
 command_args="-C ${CONF_FILE}"
 command_background="yes"

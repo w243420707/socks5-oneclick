@@ -242,7 +242,16 @@ ss -lntup | grep <端口>                # 确认 TCP 监听
 
 ## 版本与更新日志
 
-当前版本：**2.2.3**
+当前版本：**2.2.4**
+
+### 2.2.4
+
+**Alpine 兼容性加固**（未能在真机验证，逐项审查代码路径后修正）
+
+- 校验不再依赖 `sha256sum -c`：busybox 各构建对该参数支持不一，改为取出期望值后与 `sha256sum` 输出手动比对
+- 精简 Alpine 默认不带 `ss` / `ip`（属 iproute2），缺少时自动 `apk add iproute2`，否则 README 里的排查命令不可用
+- 落盘改用 `cp` + `chmod`，不再依赖 `install(1)` applet（部分 busybox 构建未链接）
+- 移除服务单元描述里残留的「TCP+UDP」
 
 ### 2.2.3
 
