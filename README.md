@@ -83,6 +83,10 @@ curl -fsSL -o /usr/local/bin/socks5 https://github.com/w243420707/socks5-oneclic
 
 脚本会留在 `/usr/local/bin/socks5`，之后直接 `socks5 --status` 看状态，不用再下载。
 
+装完想确认版本：`socks5 --help` 开头会显示。
+
+> 刚发新版时，这条链接可能还会返回上一个版本几分钟，是 CDN 缓存，属正常。等一会儿再装即可。
+
 跑起来会提示输入监听端口（默认 1080，重装时沿用上次的），然后自动：
 
 > **不要用 `curl ... | sh`。** 管道会把标准输入占掉，端口提示读不到你的输入，只能走默认值。
