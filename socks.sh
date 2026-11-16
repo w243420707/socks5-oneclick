@@ -14,7 +14,7 @@
 
 set -e
 
-SCRIPT_VERSION="2.2.1"
+SCRIPT_VERSION="2.2.2"
 GOST_VERSION="3.3.3"
 GOST_REPO="go-gost/gost"
 SELF_REPO="w243420707/socks5-oneclick"
@@ -694,7 +694,7 @@ print_result() {
   fi
   echo
   echo "=================================================="
-  echo "安装完成！SOCKS5 代理（gost v${GOST_VERSION}，TCP + UDP）"
+  echo "安装完成！SOCKS5 代理（gost v${GOST_VERSION}）"
   echo "  地址     : $ip"
   echo "  端口     : $PORT"
   echo "  用户名   : $PROXY_USER"
@@ -707,14 +707,11 @@ print_result() {
   echo
   echo "【安全组】放行 TCP ${PORT} 即可代理上网。"
   echo
-  echo "【UDP 怎么用】"
-  echo "  标准 SOCKS5 客户端（浏览器、Clash 等）的 UDP 中继，需要服务器能接收一个"
-  echo "  按需分配的高位 UDP 端口。入场只映射一个端口的 NAT 小鸡收不到这些包，"
-  echo "  会静默失败 —— 这是协议决定的，不是软件问题。"
-  echo "  这种环境请在客户端也装 gost，让 UDP 走 TCP 隧道："
-  echo "    gost -L \"udp://127.0.0.1:5353/8.8.8.8:53\" \\"
-  echo "         -F \"socks5://${PROXY_USER}:${PROXY_PASS}@${ip}:${PORT}\""
-  echo "  然后把应用里的 DNS 指向 127.0.0.1:5353（目标地址按需替换）。"
+  echo "【UDP】标准 SOCKS5 的 UDP 走服务器按需分配的端口，不是上面的代理端口。"
+  echo "      入场只映射一个端口时可能收不到包。要稳妥就在客户端也装 gost 走隧道："
+  echo "        gost -L \"udp://127.0.0.1:5353/8.8.8.8:53\" \\"
+  echo "             -F \"socks5://${PROXY_USER}:${PROXY_PASS}@${ip}:${PORT}\""
+  echo "      然后把应用里的 DNS 指向 127.0.0.1:5353（目标地址按需替换）。"
   echo
   echo "查看状态：${SELF_CMD} --status"
 }
