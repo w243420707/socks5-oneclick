@@ -2,7 +2,7 @@
 # ============================================================
 # SOCKS5 一键安装 · gost v3 单进程版
 # 支持 Alpine(OpenRC) / Debian·Ubuntu(systemd)
-# 单端口同时承载 TCP 与 UDP，强制账号密码认证
+# 强制账号密码认证，UDP 中继按需启用（端口行为见 README）
 # 开机自启 + 每小时自检
 #
 # 用法：
@@ -46,7 +46,7 @@ exists() { command -v "$1" >/dev/null 2>&1; }
 
 usage() {
   cat <<EOF
-SOCKS5 一键安装（gost v${GOST_VERSION} · 单端口 TCP+UDP）  v${SCRIPT_VERSION}
+SOCKS5 一键安装（gost v${GOST_VERSION}）  v${SCRIPT_VERSION}
 
   ${SELF_CMD}              安装或重装，保留已有账号密码
   ${SELF_CMD} --rotate     安装并重置账号密码
